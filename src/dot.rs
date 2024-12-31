@@ -51,7 +51,7 @@ impl<'a> Stmt for Edge<'a> {
         let op = if directed { "->" } else { "--" };
         for i in 0..self.nodes.len() {
             if i != self.nodes.len() - 1 {
-                write!(&mut out, "{} {}", self.nodes[i].string(), op).unwrap();
+                write!(&mut out, "{} {} ", self.nodes[i].string(), op).unwrap();
             } else {
                 write!(&mut out, "{}", self.nodes[i].string()).unwrap();
             }
@@ -64,5 +64,9 @@ fn stringify_attributes(attributes: Vec<(String, String)>) -> String {
     if attributes.is_empty() {
         return String::new();
     }
-    String::new()
+    let mut out = String::new();
+    for i in 0..attributes.len() {
+        write!(out, "{} = \"{}\"", attributes[i].0, attributes[i].1).unwrap();
+    }
+    out
 }
