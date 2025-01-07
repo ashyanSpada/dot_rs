@@ -1,3 +1,6 @@
-digraph test {
-    node1 -> node2 [label = "edge1";];
+digraph test 
+ { 
+node1 -> node2[label = "edge1" color = "red" label = "test" ];
+node1;
+node2[color = "blue" ];
 }

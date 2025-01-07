@@ -1,8 +1,6 @@
 use std::{fmt::Write, fs::File, io::Write as io_write};
 
 pub trait Node {
-    fn string(&self, _: bool) -> String;
-    fn stmt(&self);
     fn pure_string(&self) -> String;
 }
 
@@ -18,7 +16,7 @@ pub fn new_node_string(val: &str) -> NodeString {
     };
 }
 
-impl Node for NodeString {
+impl Stmt for NodeString {
     fn string(&self, _: bool) -> String {
         let mut out = String::new();
         write!(
@@ -30,10 +28,14 @@ impl Node for NodeString {
         .unwrap();
         out
     }
+
+    fn stmt(&self) {}
+}
+
+impl Node for NodeString {
     fn pure_string(&self) -> String {
         self.val.clone()
     }
-    fn stmt(&self) {}
 }
 
 impl NodeString {
@@ -78,9 +80,9 @@ impl<'a> Stmt for Edge<'a> {
         let op = if directed { "->" } else { "--" };
         for i in 0..self.nodes.len() {
             if i != self.nodes.len() - 1 {
-                write!(&mut out, "{} {} ", self.nodes[i].string(directed), op).unwrap();
+                write!(&mut out, "{} {} ", self.nodes[i].pure_string(), op).unwrap();
             } else {
-                write!(&mut out, "{}", self.nodes[i].string(directed)).unwrap();
+                write!(&mut out, "{}", self.nodes[i].pure_string()).unwrap();
             }
         }
         out + &stringify_attributes(&self.attributes)
@@ -128,13 +130,13 @@ impl<'a> Graph<'a> {
         let mut out = String::new();
         let prefix = if self.directed { "digraph" } else { "graph" };
         write!(out, "{} {} \n {{ \n", prefix, self.name).unwrap();
-        if self.graph_attributes.is_empty() {
+        if !self.graph_attributes.is_empty() {
             write!(out, "{};\n", stringify_attributes(&self.graph_attributes)).unwrap();
         }
-        if self.edge_attributes.is_empty() {
+        if !self.edge_attributes.is_empty() {
             write!(out, "{};\n", stringify_attributes(&self.edge_attributes)).unwrap();
         }
-        if self.node_attributes.is_empty() {
+        if !self.node_attributes.is_empty() {
             write!(out, "{};\n", stringify_attributes(&self.node_attributes)).unwrap();
         }
         for stmt in &self.stmts {
@@ -192,14 +194,30 @@ impl<'a> Stmt for SubGraph<'a> {
         let mut out = String::new();
         let prefix = "subgraph";
         write!(out, "{} {} \n {{ \n", prefix, self.name).unwrap();
-        write!(
-            out,
-            "{};\n{};\n;{};\n",
-            stringify_attributes_with_prefix("graph", &self.graph_attributes),
-            stringify_attributes_with_prefix("edge", &self.edge_attributes),
-            stringify_attributes_with_prefix("node", &self.node_attributes),
-        )
-        .unwrap();
+        if !self.graph_attributes.is_empty() {
+            write!(
+                out,
+                "{};\n",
+                stringify_attributes_with_prefix("graph", &self.graph_attributes)
+            )
+            .unwrap();
+        }
+        if !self.edge_attributes.is_empty() {
+            write!(
+                out,
+                "{};\n",
+                stringify_attributes_with_prefix("edge", &self.edge_attributes)
+            )
+            .unwrap();
+        }
+        if !self.node_attributes.is_empty() {
+            write!(
+                out,
+                "{};\n",
+                stringify_attributes_with_prefix("node", &self.node_attributes)
+            )
+            .unwrap();
+        }
         for stmt in &self.stmts {
             write!(out, "{};\n", stmt.string(directed)).unwrap();
         }
@@ -239,7 +257,7 @@ fn stringify_attributes(attributes: &Vec<(String, String)>) -> String {
     }
     let mut out = "[".to_string();
     for i in 0..attributes.len() {
-        write!(out, "{} = \"{}\"", attributes[i].0, attributes[i].1).unwrap();
+        write!(out, "{} = \"{}\" ", attributes[i].0, attributes[i].1).unwrap();
     }
     out + "]"
 }
@@ -249,11 +267,16 @@ mod test {
     fn test_graph() {
         use super::*;
         let node1 = new_node_string("node1");
-        let node2 = new_node_string("node2");
+        let node2 = new_node_string("node2").with_attribute("color", "blue");
         let edge = new_edge(&node1)
             .with_attribute("label", "edge1")
-            .add_node(&node2);
-        let graph = new_graph("test", true).add_stmt(&edge);
+            .add_node(&node2)
+            .with_attribute("color", "red")
+            .with_attribute("label", "test");
+        let graph = new_graph("test", true)
+            .add_stmt(&edge)
+            .add_stmt(&node1)
+            .add_stmt(&node2);
         graph.draw("test.dot");
     }
 }
